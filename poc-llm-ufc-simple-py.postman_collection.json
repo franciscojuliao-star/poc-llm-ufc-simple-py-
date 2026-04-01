@@ -1,0 +1,340 @@
+{
+  "info": {
+    "name": "PoC LLM UFC Simples — Python",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    { "key": "base_url", "value": "http://localhost:8001" },
+    { "key": "course_id", "value": "1" },
+    { "key": "module_id", "value": "1" },
+    { "key": "lesson_id", "value": "1" },
+    { "key": "quiz_id", "value": "1" },
+    { "key": "question_id", "value": "1" }
+  ],
+  "item": [
+    {
+      "name": "Cursos",
+      "item": [
+        {
+          "name": "Criar curso (sem imagem)",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": { "raw": "{{base_url}}/courses", "host": ["{{base_url}}"], "path": ["courses"] },
+            "body": {
+              "mode": "formdata",
+              "formdata": [
+                {
+                  "key": "dados",
+                  "value": "{\"title\":\"Python e Ruby on Rails\",\"category\":\"Programação\",\"description\":\"Curso completo de desenvolvimento web\"}",
+                  "type": "text",
+                  "contentType": "application/json"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Criar curso (com imagem)",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": { "raw": "{{base_url}}/courses", "host": ["{{base_url}}"], "path": ["courses"] },
+            "body": {
+              "mode": "formdata",
+              "formdata": [
+                {
+                  "key": "dados",
+                  "value": "{\"title\":\"FastAPI na Prática\",\"category\":\"Tecnologia\",\"description\":\"Curso de FastAPI com Python\"}",
+                  "type": "text",
+                  "contentType": "application/json"
+                },
+                { "key": "imagem", "type": "file", "src": "" }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Listar cursos",
+          "request": {
+            "method": "GET",
+            "url": { "raw": "{{base_url}}/courses", "host": ["{{base_url}}"], "path": ["courses"] }
+          }
+        },
+        {
+          "name": "Detalhar curso",
+          "request": {
+            "method": "GET",
+            "url": { "raw": "{{base_url}}/courses/{{course_id}}", "host": ["{{base_url}}"], "path": ["courses", "{{course_id}}"] }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Módulos",
+      "item": [
+        {
+          "name": "Criar módulo (sem imagem)",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": { "raw": "{{base_url}}/courses/{{course_id}}/modules", "host": ["{{base_url}}"], "path": ["courses", "{{course_id}}", "modules"] },
+            "body": {
+              "mode": "formdata",
+              "formdata": [
+                {
+                  "key": "dados",
+                  "value": "{\"name\":\"Fundamentos de Linguagens Web\"}",
+                  "type": "text",
+                  "contentType": "application/json"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Criar módulo (com imagem)",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": { "raw": "{{base_url}}/courses/{{course_id}}/modules", "host": ["{{base_url}}"], "path": ["courses", "{{course_id}}", "modules"] },
+            "body": {
+              "mode": "formdata",
+              "formdata": [
+                {
+                  "key": "dados",
+                  "value": "{\"name\":\"Frameworks e Bibliotecas\"}",
+                  "type": "text",
+                  "contentType": "application/json"
+                },
+                { "key": "imagem", "type": "file", "src": "" }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Listar módulos do curso",
+          "request": {
+            "method": "GET",
+            "url": { "raw": "{{base_url}}/courses/{{course_id}}/modules", "host": ["{{base_url}}"], "path": ["courses", "{{course_id}}", "modules"] }
+          }
+        },
+        {
+          "name": "Detalhar módulo",
+          "request": {
+            "method": "GET",
+            "url": { "raw": "{{base_url}}/modules/{{module_id}}", "host": ["{{base_url}}"], "path": ["modules", "{{module_id}}"] }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Aulas",
+      "item": [
+        {
+          "name": "Criar aula (somente texto)",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": { "raw": "{{base_url}}/modules/{{module_id}}/lessons", "host": ["{{base_url}}"], "path": ["modules", "{{module_id}}", "lessons"] },
+            "body": {
+              "mode": "formdata",
+              "formdata": [
+                {
+                  "key": "dados",
+                  "value": "{\"name\":\"Introdução ao Python\",\"content_editor\":\"Python é uma linguagem de alto nível, interpretada e de propósito geral. Suporta Django e Flask para desenvolvimento web.\"}",
+                  "type": "text",
+                  "contentType": "application/json"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Criar aula (com PDF)",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": { "raw": "{{base_url}}/modules/{{module_id}}/lessons", "host": ["{{base_url}}"], "path": ["modules", "{{module_id}}", "lessons"] },
+            "body": {
+              "mode": "formdata",
+              "formdata": [
+                {
+                  "key": "dados",
+                  "value": "{\"name\":\"Aula com PDF\"}",
+                  "type": "text",
+                  "contentType": "application/json"
+                },
+                { "key": "arquivo", "type": "file", "src": "" }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Listar aulas do módulo",
+          "request": {
+            "method": "GET",
+            "url": { "raw": "{{base_url}}/modules/{{module_id}}/lessons", "host": ["{{base_url}}"], "path": ["modules", "{{module_id}}", "lessons"] }
+          }
+        },
+        {
+          "name": "Detalhar aula",
+          "request": {
+            "method": "GET",
+            "url": { "raw": "{{base_url}}/lessons/{{lesson_id}}", "host": ["{{base_url}}"], "path": ["lessons", "{{lesson_id}}"] }
+          }
+        }
+      ]
+    },
+    {
+      "name": "IA — Conteúdo da Aula",
+      "item": [
+        {
+          "name": "Gerar conteúdo via IA",
+          "request": {
+            "method": "POST",
+            "url": { "raw": "{{base_url}}/lessons/{{lesson_id}}/gerar-conteudo", "host": ["{{base_url}}"], "path": ["lessons", "{{lesson_id}}", "gerar-conteudo"] }
+          }
+        },
+        {
+          "name": "Ver conteúdo pendente",
+          "request": {
+            "method": "GET",
+            "url": { "raw": "{{base_url}}/lessons/{{lesson_id}}/conteudo-pendente", "host": ["{{base_url}}"], "path": ["lessons", "{{lesson_id}}", "conteudo-pendente"] }
+          }
+        },
+        {
+          "name": "Confirmar conteúdo gerado",
+          "request": {
+            "method": "POST",
+            "url": { "raw": "{{base_url}}/lessons/{{lesson_id}}/confirmar-conteudo", "host": ["{{base_url}}"], "path": ["lessons", "{{lesson_id}}", "confirmar-conteudo"] }
+          }
+        },
+        {
+          "name": "Regerar conteúdo",
+          "request": {
+            "method": "POST",
+            "url": { "raw": "{{base_url}}/lessons/{{lesson_id}}/regerar-conteudo", "host": ["{{base_url}}"], "path": ["lessons", "{{lesson_id}}", "regerar-conteudo"] }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Quiz — Manual",
+      "item": [
+        {
+          "name": "Criar quiz com perguntas",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "url": { "raw": "{{base_url}}/modules/{{module_id}}/quiz", "host": ["{{base_url}}"], "path": ["modules", "{{module_id}}", "quiz"] },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"questions\": [\n    {\n      \"statement\": \"O que é uma list comprehension em Python?\",\n      \"points\": 1,\n      \"alternatives\": [\n        { \"text\": \"Uma forma concisa de criar listas\", \"correct\": true },\n        { \"text\": \"Um tipo de laço while\", \"correct\": false },\n        { \"text\": \"Uma função embutida do Python\", \"correct\": false },\n        { \"text\": \"Um método de ordenação\", \"correct\": false }\n      ]\n    },\n    {\n      \"statement\": \"Qual comando cria um novo projeto Rails?\",\n      \"points\": 1,\n      \"alternatives\": [\n        { \"text\": \"rails new\", \"correct\": true },\n        { \"text\": \"rails create\", \"correct\": false },\n        { \"text\": \"rails init\", \"correct\": false },\n        { \"text\": \"rails start\", \"correct\": false }\n      ]\n    }\n  ]\n}"
+            }
+          }
+        },
+        {
+          "name": "Ver quiz do módulo",
+          "request": {
+            "method": "GET",
+            "url": { "raw": "{{base_url}}/modules/{{module_id}}/quiz", "host": ["{{base_url}}"], "path": ["modules", "{{module_id}}", "quiz"] }
+          }
+        },
+        {
+          "name": "Configurar exibição do quiz",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "url": { "raw": "{{base_url}}/quiz/{{quiz_id}}", "host": ["{{base_url}}"], "path": ["quiz", "{{quiz_id}}"] },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"show_wrong_answers\": true,\n  \"show_correct_answers\": true,\n  \"show_points\": true\n}"
+            }
+          }
+        },
+        {
+          "name": "Adicionar pergunta ao quiz",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "url": { "raw": "{{base_url}}/quiz/{{quiz_id}}/questions", "host": ["{{base_url}}"], "path": ["quiz", "{{quiz_id}}", "questions"] },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"statement\": \"O que é o ActiveRecord no Rails?\",\n  \"points\": 2,\n  \"alternatives\": [\n    { \"text\": \"O ORM do Rails para interagir com o banco de dados\", \"correct\": true },\n    { \"text\": \"Um sistema de rotas\", \"correct\": false },\n    { \"text\": \"Uma gem de autenticação\", \"correct\": false },\n    { \"text\": \"O sistema de templates do Rails\", \"correct\": false }\n  ]\n}"
+            }
+          }
+        },
+        {
+          "name": "Listar perguntas do quiz",
+          "request": {
+            "method": "GET",
+            "url": { "raw": "{{base_url}}/quiz/{{quiz_id}}/questions", "host": ["{{base_url}}"], "path": ["quiz", "{{quiz_id}}", "questions"] }
+          }
+        },
+        {
+          "name": "Adicionar alternativa a uma pergunta",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "url": { "raw": "{{base_url}}/questions/{{question_id}}/alternatives", "host": ["{{base_url}}"], "path": ["questions", "{{question_id}}", "alternatives"] },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"text\": \"Nova alternativa\",\n  \"correct\": false\n}"
+            }
+          }
+        },
+        {
+          "name": "Listar alternativas da pergunta",
+          "request": {
+            "method": "GET",
+            "url": { "raw": "{{base_url}}/questions/{{question_id}}/alternatives", "host": ["{{base_url}}"], "path": ["questions", "{{question_id}}", "alternatives"] }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Quiz — IA",
+      "item": [
+        {
+          "name": "Gerar quiz via IA (5 perguntas)",
+          "request": {
+            "method": "POST",
+            "url": {
+              "raw": "{{base_url}}/modules/{{module_id}}/quiz/gerar?quantidade=5",
+              "host": ["{{base_url}}"],
+              "path": ["modules", "{{module_id}}", "quiz", "gerar"],
+              "query": [{ "key": "quantidade", "value": "5" }]
+            }
+          }
+        },
+        {
+          "name": "Ver quiz pendente",
+          "request": {
+            "method": "GET",
+            "url": { "raw": "{{base_url}}/modules/{{module_id}}/quiz/pendente", "host": ["{{base_url}}"], "path": ["modules", "{{module_id}}", "quiz", "pendente"] }
+          }
+        },
+        {
+          "name": "Confirmar quiz gerado",
+          "request": {
+            "method": "POST",
+            "url": { "raw": "{{base_url}}/modules/{{module_id}}/quiz/confirmar", "host": ["{{base_url}}"], "path": ["modules", "{{module_id}}", "quiz", "confirmar"] }
+          }
+        },
+        {
+          "name": "Regerar quiz via IA",
+          "request": {
+            "method": "POST",
+            "url": {
+              "raw": "{{base_url}}/modules/{{module_id}}/quiz/regerar?quantidade=5",
+              "host": ["{{base_url}}"],
+              "path": ["modules", "{{module_id}}", "quiz", "regerar"],
+              "query": [{ "key": "quantidade", "value": "5" }]
+            }
+          }
+        }
+      ]
+    }
+  ]
+}
