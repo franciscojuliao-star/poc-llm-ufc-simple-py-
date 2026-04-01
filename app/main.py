@@ -1,5 +1,6 @@
 from contextlib import asynccontextmanager
 from fastapi import FastAPI
+from fastapi.middleware.cors import CORSMiddleware
 from app.course.router import router as course_router
 from app.module.router import router as module_router
 from app.lesson.router import router as lesson_router
@@ -25,6 +26,14 @@ app = FastAPI(
     description="Plataforma LMS com IA embarcada usando FastAPI async + Celery + Redis",
     version="0.2.0",
     lifespan=lifespan,
+)
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
 )
 
 app.add_exception_handler(RecursoNaoEncontradoException, recurso_nao_encontrado_handler)
