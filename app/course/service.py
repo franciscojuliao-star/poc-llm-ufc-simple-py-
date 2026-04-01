@@ -1,6 +1,6 @@
 import os
 import uuid
-from sqlalchemy.orm import Session
+from sqlalchemy.ext.asyncio import AsyncSession
 from fastapi import UploadFile
 from app.course.model import Course
 from app.course.repository import CourseRepository
@@ -10,10 +10,10 @@ from app.core.config import settings
 
 
 class CourseService:
-    def __init__(self, db: Session):
+    def __init__(self, db: AsyncSession):
         self.repository = CourseRepository(db)
 
-    def criar(self, request: CourseRequest, imagem: UploadFile | None) -> Course:
+    async def criar(self, request: CourseRequest, imagem: UploadFile | None) -> Course:
         image_path = self._salvar_imagem(imagem) if imagem else None
         course = Course(
             title=request.title,
@@ -21,13 +21,13 @@ class CourseService:
             description=request.description,
             image_path=image_path,
         )
-        return self.repository.save(course)
+        return await self.repository.save(course)
 
-    def listar(self) -> list[Course]:
-        return self.repository.find_all()
+    async def listar(self) -> list[Course]:
+        return await self.repository.find_all()
 
-    def buscar_por_id(self, course_id: int) -> Course:
-        course = self.repository.find_by_id(course_id)
+    async def buscar_por_id(self, course_id: int) -> Course:
+        course = await self.repository.find_by_id(course_id)
         if not course:
             raise RecursoNaoEncontradoException(f"Curso {course_id} não encontrado")
         return course

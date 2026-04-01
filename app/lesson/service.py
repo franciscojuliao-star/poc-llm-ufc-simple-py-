@@ -1,6 +1,6 @@
 import os
 import uuid
-from sqlalchemy.orm import Session
+from sqlalchemy.ext.asyncio import AsyncSession
 from fastapi import UploadFile
 from app.lesson.model import Lesson
 from app.lesson.repository import LessonRepository
@@ -11,16 +11,16 @@ from app.core.config import settings
 
 
 class LessonService:
-    def __init__(self, db: Session):
+    def __init__(self, db: AsyncSession):
         self.repository = LessonRepository(db)
         self.module_repository = ModuleRepository(db)
 
-    def criar(self, module_id: int, request: LessonRequest, arquivo: UploadFile | None) -> Lesson:
-        if not self.module_repository.find_by_id(module_id):
+    async def criar(self, module_id: int, request: LessonRequest, arquivo: UploadFile | None) -> Lesson:
+        if not await self.module_repository.find_by_id(module_id):
             raise RecursoNaoEncontradoException(f"Módulo {module_id} não encontrado")
         if arquivo and arquivo.content_type != "application/pdf":
             raise RegraDeNegocioException("Apenas arquivos PDF são aceitos")
-        order_num = self.repository.count_by_module(module_id) + 1
+        order_num = await self.repository.count_by_module(module_id) + 1
         file_path, file_type = None, None
         if arquivo:
             file_path = self._salvar_arquivo(arquivo)
@@ -33,22 +33,22 @@ class LessonService:
             file_path=file_path,
             file_type=file_type,
         )
-        return self.repository.save(lesson)
+        return await self.repository.save(lesson)
 
-    def listar_por_modulo(self, module_id: int) -> list[Lesson]:
-        return self.repository.find_by_module(module_id)
+    async def listar_por_modulo(self, module_id: int) -> list[Lesson]:
+        return await self.repository.find_by_module(module_id)
 
-    def buscar_por_id(self, lesson_id: int) -> Lesson:
-        return self.buscar_entidade(lesson_id)
+    async def buscar_por_id(self, lesson_id: int) -> Lesson:
+        return await self.buscar_entidade(lesson_id)
 
-    def buscar_entidade(self, lesson_id: int) -> Lesson:
-        lesson = self.repository.find_by_id(lesson_id)
+    async def buscar_entidade(self, lesson_id: int) -> Lesson:
+        lesson = await self.repository.find_by_id(lesson_id)
         if not lesson:
             raise RecursoNaoEncontradoException(f"Aula {lesson_id} não encontrada")
         return lesson
 
-    def salvar_conteudo_gerado(self, lesson: Lesson) -> Lesson:
-        return self.repository.save(lesson)
+    async def salvar_conteudo_gerado(self, lesson: Lesson) -> Lesson:
+        return await self.repository.save(lesson)
 
     def _salvar_arquivo(self, arquivo: UploadFile) -> str:
         conteudo = arquivo.file.read()

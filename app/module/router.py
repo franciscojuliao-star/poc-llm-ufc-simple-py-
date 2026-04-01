@@ -13,24 +13,24 @@ def get_service(db: SessionDep) -> ModuleService:
 
 
 @router.post("/courses/{course_id}/modules", response_model=ApiResponse, status_code=201)
-def criar(
+async def criar(
     course_id: int,
     dados: str = Form(...),
     imagem: UploadFile | None = File(default=None),
     service: ModuleService = Depends(get_service),
 ):
     request = ModuleRequest(**json.loads(dados))
-    module = service.criar(course_id, request, imagem)
+    module = await service.criar(course_id, request, imagem)
     return ApiResponse.ok("Módulo criado com sucesso", ModuleResponse.model_validate(module))
 
 
 @router.get("/courses/{course_id}/modules", response_model=ApiResponse)
-def listar(course_id: int, service: ModuleService = Depends(get_service)):
-    modules = service.listar_por_curso(course_id)
+async def listar(course_id: int, service: ModuleService = Depends(get_service)):
+    modules = await service.listar_por_curso(course_id)
     return ApiResponse.ok(dados=[ModuleResponse.model_validate(m) for m in modules])
 
 
 @router.get("/modules/{module_id}", response_model=ApiResponse)
-def buscar(module_id: int, service: ModuleService = Depends(get_service)):
-    module = service.buscar_por_id(module_id)
+async def buscar(module_id: int, service: ModuleService = Depends(get_service)):
+    module = await service.buscar_por_id(module_id)
     return ApiResponse.ok(dados=ModuleResponse.model_validate(module))

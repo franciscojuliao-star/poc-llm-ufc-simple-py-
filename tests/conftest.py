@@ -1,34 +1,27 @@
 import pytest
-from sqlalchemy import create_engine
-from sqlalchemy.orm import sessionmaker, Session
-from fastapi.testclient import TestClient
+import pytest_asyncio
+from sqlalchemy.ext.asyncio import create_async_engine, AsyncSession, async_sessionmaker
 from app.db.base import Base
 from app.db.session import get_session
 from app.main import app
+import app.course.model  # noqa: F401
+import app.module.model  # noqa: F401
+import app.lesson.model  # noqa: F401
+import app.quiz.model    # noqa: F401
 
-DATABASE_URL = "sqlite:///:memory:"
-
-engine = create_engine(DATABASE_URL, connect_args={"check_same_thread": False})
-TestingSessionLocal = sessionmaker(bind=engine, autocommit=False, autoflush=False)
+DATABASE_URL = "sqlite+aiosqlite:///:memory:"
 
 
-@pytest.fixture(scope="function")
-def db() -> Session:
-    Base.metadata.create_all(bind=engine)
-    session = TestingSessionLocal()
-    try:
+@pytest_asyncio.fixture(scope="function")
+async def db() -> AsyncSession:
+    engine = create_async_engine(DATABASE_URL)
+    async with engine.begin() as conn:
+        await conn.run_sync(Base.metadata.create_all)
+
+    session_factory = async_sessionmaker(engine, class_=AsyncSession, expire_on_commit=False)
+    async with session_factory() as session:
         yield session
-    finally:
-        session.close()
-        Base.metadata.drop_all(bind=engine)
 
-
-@pytest.fixture(scope="function")
-def client(db: Session) -> TestClient:
-    def override_get_session():
-        yield db
-
-    app.dependency_overrides[get_session] = override_get_session
-    with TestClient(app) as c:
-        yield c
-    app.dependency_overrides.clear()
+    async with engine.begin() as conn:
+        await conn.run_sync(Base.metadata.drop_all)
+    await engine.dispose()

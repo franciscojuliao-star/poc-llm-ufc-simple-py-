@@ -11,17 +11,19 @@ from app.shared.exception import (
     regra_de_negocio_handler,
     erro_interno_handler,
 )
+from app.shared.redis_client import close_async_redis
 
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     yield
+    await close_async_redis()
 
 
 app = FastAPI(
     title="PoC LLM UFC Simples — Python",
-    description="Plataforma LMS com IA embarcada usando FastAPI",
-    version="0.1.0",
+    description="Plataforma LMS com IA embarcada usando FastAPI async + Celery + Redis",
+    version="0.2.0",
     lifespan=lifespan,
 )
 

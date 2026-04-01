@@ -1,22 +1,28 @@
-from sqlalchemy.orm import Session
+from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy import select, func
 from app.module.model import Module
 
 
 class ModuleRepository:
-    def __init__(self, db: Session):
+    def __init__(self, db: AsyncSession):
         self.db = db
 
-    def save(self, module: Module) -> Module:
+    async def save(self, module: Module) -> Module:
         self.db.add(module)
-        self.db.commit()
-        self.db.refresh(module)
+        await self.db.commit()
+        await self.db.refresh(module)
         return module
 
-    def find_by_course(self, course_id: int) -> list[Module]:
-        return self.db.query(Module).filter(Module.course_id == course_id).all()
+    async def find_by_course(self, course_id: int) -> list[Module]:
+        result = await self.db.execute(select(Module).where(Module.course_id == course_id))
+        return list(result.scalars().all())
 
-    def find_by_id(self, module_id: int) -> Module | None:
-        return self.db.query(Module).filter(Module.id == module_id).first()
+    async def find_by_id(self, module_id: int) -> Module | None:
+        result = await self.db.execute(select(Module).where(Module.id == module_id))
+        return result.scalar_one_or_none()
 
-    def count_by_course(self, course_id: int) -> int:
-        return self.db.query(Module).filter(Module.course_id == course_id).count()
+    async def count_by_course(self, course_id: int) -> int:
+        result = await self.db.execute(
+            select(func.count()).select_from(Module).where(Module.course_id == course_id)
+        )
+        return result.scalar() or 0
