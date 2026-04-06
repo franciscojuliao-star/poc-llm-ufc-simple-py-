@@ -17,10 +17,11 @@ Desenvolvido por **Aglayrton Julião** com **Desenvolvimento Assistido por IA**.
 | Framework | FastAPI |
 | Banco de Dados | PostgreSQL 16 |
 | Migrations | Alembic |
-| ORM | SQLAlchemy 2.0 |
+| ORM | SQLAlchemy 2.0 (async) |
 | IA | Groq via OpenAI SDK (llama-3.3-70b-versatile) |
 | Leitura de PDF | pdfplumber |
 | Validação | Pydantic v2 |
+| Processamento Assíncrono | Celery + Redis |
 | Testes | pytest |
 | Servidor | Uvicorn |
 
@@ -44,12 +45,13 @@ Question  (1) ──> (N) Alternative
 app/
 ├── main.py
 ├── core/         → config (settings via pydantic-settings)
-├── db/           → base declarativa + session SQLAlchemy
+├── db/           → base declarativa + session SQLAlchemy async
 ├── course/       → model · schema · repository · service · router
 ├── module/       → model · schema · repository · service · router
 ├── lesson/       → model · schema · repository · service · ai_service · router
 ├── quiz/         → model · schema · repository · service · ai_service · router
-└── shared/       → ApiResponse · exceções · dependências
+├── shared/       → ApiResponse · exceções · dependências · redis_client
+└── worker/       → celery_app · lesson_tasks · quiz_tasks
 alembic/          → migrations automáticas
 tests/            → testes unitários por domínio (TDD)
 ```
@@ -60,6 +62,7 @@ tests/            → testes unitários por domínio (TDD)
 
 - Python 3.12+
 - PostgreSQL 16
+- Redis
 - Conta no [Groq](https://console.groq.com) com uma API Key (`gsk_...`)
 
 ---
@@ -81,22 +84,16 @@ source .venv/bin/activate
 pip install -e ".[dev]"
 ```
 
-Ou instalar diretamente:
-
-```bash
-pip install fastapi[standard] uvicorn sqlalchemy alembic psycopg2-binary \
-            pydantic-settings python-multipart openai pdfplumber \
-            pytest pytest-asyncio httpx
-```
-
 ### 3. Configurar variáveis de ambiente
 
 Crie um arquivo `.env` na raiz (não versionado):
 
 ```bash
 DB_URL=postgresql://poc_user:poc123@localhost:5432/poc_llm_simple_py
+ASYNC_DB_URL=postgresql+asyncpg://poc_user:poc123@localhost:5432/poc_llm_simple_py
 GROQ_API_KEY=gsk_sua_chave_aqui
 UPLOAD_DIR=uploads
+REDIS_URL=redis://localhost:6379/0
 ```
 
 ### 4. Executar as migrations
@@ -108,29 +105,27 @@ alembic upgrade head
 ### 5. Rodar a aplicação
 
 ```bash
-GROQ_API_KEY=gsk_sua_chave_aqui uvicorn app.main:app --host 0.0.0.0 --port 8001 --reload
+uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
 ```
 
-Ou com o `.env` carregado:
+### 6. Rodar o Celery worker (em outro terminal)
 
 ```bash
-export $(cat .env | xargs) && uvicorn app.main:app --port 8001 --reload
+celery -A app.worker.celery_app worker --loglevel=info
 ```
 
-A aplicação sobe em: `http://localhost:8001`
-
-### 6. Swagger UI
+### 7. Swagger UI
 
 Documentação interativa disponível em:
 
 ```
-http://localhost:8001/docs
+http://localhost:8000/docs
 ```
 
 Documentação alternativa (ReDoc):
 
 ```
-http://localhost:8001/redoc
+http://localhost:8000/redoc
 ```
 
 ---
@@ -148,9 +143,9 @@ O arquivo `poc-llm-ufc-simple-py.postman_collection.json` na raiz do projeto con
 
 | Pasta | Descrição |
 |---|---|
-| Cursos | CRUD de cursos, com suporte a imagem de capa |
-| Módulos | CRUD de módulos vinculados a um curso |
-| Aulas | CRUD de aulas com suporte a texto e upload de PDF |
+| Cursos | CRUD completo de cursos, com suporte a imagem de capa |
+| Módulos | CRUD completo de módulos vinculados a um curso |
+| Aulas | CRUD completo de aulas com suporte a texto e upload de PDF |
 | IA — Conteúdo da Aula | Geração, revisão e confirmação de conteúdo via IA |
 | Quiz — Manual | Criação manual de quiz, perguntas e alternativas |
 | Quiz — IA | Geração, revisão e confirmação de quiz via IA |
@@ -169,6 +164,13 @@ dados: { "title": "...", "category": "...", "description": "..." }
 imagem: (opcional)
 ```
 
+Atualizar ou deletar:
+
+```
+PUT    /courses/{id}   → atualiza título, categoria ou descrição
+DELETE /courses/{id}   → remove o curso
+```
+
 ### 2. Criar o Módulo
 
 ```
@@ -177,6 +179,13 @@ Content-Type: multipart/form-data
 
 dados: { "name": "..." }
 imagem: (opcional)
+```
+
+Atualizar ou deletar:
+
+```
+PUT    /modules/{id}   → atualiza nome
+DELETE /modules/{id}   → remove o módulo
 ```
 
 ### 3. Criar as Aulas
@@ -200,13 +209,21 @@ dados: { "name": "..." }
 arquivo: arquivo.pdf
 ```
 
+Atualizar ou deletar:
+
+```
+PUT    /lessons/{id}   → atualiza nome ou conteúdo do editor
+DELETE /lessons/{id}   → remove a aula
+```
+
 ### 4. Gerar Conteúdo com IA
 
 A IA usa o `content_editor` ou o texto extraído do PDF como base para gerar conteúdo HTML estruturado.
+A geração é processada de forma assíncrona via Celery + Redis.
 
 ```
-POST /lessons/{id}/gerar-conteudo      → gera e mantém pendente
-GET  /lessons/{id}/conteudo-pendente   → visualiza o conteúdo gerado
+POST /lessons/{id}/gerar-conteudo      → enfileira task e retorna task_id
+GET  /lessons/{id}/conteudo-pendente   → visualiza o conteúdo gerado (aguarda processamento)
 POST /lessons/{id}/confirmar-conteudo  → salva no banco
 POST /lessons/{id}/regerar-conteudo    → regera se não gostar
 ```
@@ -214,10 +231,11 @@ POST /lessons/{id}/regerar-conteudo    → regera se não gostar
 ### 5. Gerar Quiz com IA
 
 A IA usa o conteúdo das aulas do módulo para gerar perguntas de múltipla escolha.
+A geração é processada de forma assíncrona via Celery + Redis.
 
 ```
-POST /modules/{id}/quiz/gerar?quantidade=5   → gera e mantém pendente
-GET  /modules/{id}/quiz/pendente              → visualiza o quiz gerado
+POST /modules/{id}/quiz/gerar?quantidade=5   → enfileira task e retorna task_id
+GET  /modules/{id}/quiz/pendente              → visualiza o quiz gerado (aguarda processamento)
 POST /modules/{id}/quiz/confirmar             → salva no banco
 POST /modules/{id}/quiz/regerar?quantidade=5  → regera se não gostar
 ```
@@ -281,7 +299,7 @@ Todas as respostas seguem o padrão:
 GROQ_API_KEY=placeholder pytest
 ```
 
-50 testes unitários cobrindo todos os serviços: `CourseService`, `ModuleService`, `LessonService`, `LessonAiService`, `QuizService` e `QuizAiService`.
+61 testes unitários cobrindo todos os serviços: `CourseService`, `ModuleService`, `LessonService`, `LessonAiService`, `QuizService` e `QuizAiService`.
 
 ---
 
@@ -295,6 +313,7 @@ GROQ_API_KEY=placeholder pytest
 | IA | Spring AI | OpenAI SDK |
 | Leitura PDF | Apache PDFBox | pdfplumber |
 | Validação | Bean Validation | Pydantic v2 |
+| Processamento Assíncrono | Spring @Async / Virtual Threads | Celery + Redis |
 | Testes | JUnit 5 + Mockito | pytest + unittest.mock |
-| Porta padrão | 8080 | 8001 |
+| Porta padrão | 8080 | 8000 |
 | Docs | SpringDoc Swagger | FastAPI Swagger (nativo) |
