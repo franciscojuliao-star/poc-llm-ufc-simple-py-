@@ -4,7 +4,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from fastapi import UploadFile
 from app.module.model import Module
 from app.module.repository import ModuleRepository
-from app.module.schema import ModuleRequest
+from app.module.schema import ModuleRequest, ModuleUpdateRequest
 from app.course.repository import CourseRepository
 from app.shared.exception import RecursoNaoEncontradoException, RegraDeNegocioException
 from app.core.config import settings
@@ -27,6 +27,16 @@ class ModuleService:
             image_path=image_path,
         )
         return await self.repository.save(module)
+
+    async def atualizar(self, module_id: int, request: ModuleUpdateRequest) -> Module:
+        module = await self.buscar_por_id(module_id)
+        if request.name is not None:
+            module.name = request.name
+        return await self.repository.save(module)
+
+    async def deletar(self, module_id: int) -> None:
+        module = await self.buscar_por_id(module_id)
+        await self.repository.delete(module)
 
     async def listar_por_curso(self, course_id: int) -> list[Module]:
         return await self.repository.find_by_course(course_id)

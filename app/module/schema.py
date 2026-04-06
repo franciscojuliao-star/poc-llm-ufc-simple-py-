@@ -6,6 +6,10 @@ class ModuleRequest(BaseModel):
     name: str
 
 
+class ModuleUpdateRequest(BaseModel):
+    name: str | None = None
+
+
 class ModuleResponse(BaseModel):
     id: int
     name: str
