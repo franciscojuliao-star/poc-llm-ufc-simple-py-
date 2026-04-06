@@ -7,6 +7,11 @@ class LessonRequest(BaseModel):
     content_editor: str | None = None
 
 
+class LessonUpdateRequest(BaseModel):
+    name: str | None = None
+    content_editor: str | None = None
+
+
 class LessonResponse(BaseModel):
     id: int
     name: str

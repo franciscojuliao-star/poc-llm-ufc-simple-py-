@@ -1,19 +1,26 @@
-from sqlalchemy.orm import Session
+from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy import select
 from app.course.model import Course
 
 
 class CourseRepository:
-    def __init__(self, db: Session):
+    def __init__(self, db: AsyncSession):
         self.db = db
 
-    def save(self, course: Course) -> Course:
+    async def save(self, course: Course) -> Course:
         self.db.add(course)
-        self.db.commit()
-        self.db.refresh(course)
+        await self.db.commit()
+        await self.db.refresh(course)
         return course
 
-    def find_all(self) -> list[Course]:
-        return self.db.query(Course).all()
+    async def find_all(self) -> list[Course]:
+        result = await self.db.execute(select(Course))
+        return list(result.scalars().all())
 
-    def find_by_id(self, course_id: int) -> Course | None:
-        return self.db.query(Course).filter(Course.id == course_id).first()
+    async def find_by_id(self, course_id: int) -> Course | None:
+        result = await self.db.execute(select(Course).where(Course.id == course_id))
+        return result.scalar_one_or_none()
+
+    async def delete(self, course: Course) -> None:
+        await self.db.delete(course)
+        await self.db.commit()

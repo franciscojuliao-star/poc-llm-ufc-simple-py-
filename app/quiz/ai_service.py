@@ -1,61 +1,36 @@
 import json
 import re
-from openai import OpenAI
-from sqlalchemy.orm import Session
+from sqlalchemy.ext.asyncio import AsyncSession
 from app.quiz.model import Quiz
 from app.quiz.schema import QuizGeneratedResponse, QuizRequest, QuestionRequest, AlternativeRequest
 from app.quiz.service import QuizService
 from app.lesson.repository import LessonRepository
 from app.shared.exception import RegraDeNegocioException
-from app.core.config import settings
-
-_pending_quiz: dict[int, QuizGeneratedResponse] = {}
+from app.shared.redis_client import get_async_redis
+from app.worker.quiz_tasks import gerar_quiz_task
 
 
 class QuizAiService:
-    def __init__(self, db: Session):
+    def __init__(self, db: AsyncSession):
         self.quiz_service = QuizService(db)
         self._lesson_repo = LessonRepository(db)
-        self._pending = _pending_quiz
 
-    def gerar_quiz(self, module_id: int, quantidade: int = 5) -> QuizGeneratedResponse:
-        conteudo = self._coletar_conteudo_modulo(module_id)
+    async def gerar_quiz(self, module_id: int, quantidade: int = 5) -> dict:
+        conteudo = await self._coletar_conteudo_modulo(module_id)
         if not conteudo or not conteudo.strip():
             raise RegraDeNegocioException("Não há conteúdo legível nas aulas deste módulo para gerar o quiz")
+        task = gerar_quiz_task.delay(module_id, conteudo, quantidade)
+        return {"task_id": task.id, "status": "PROCESSING"}
 
-        client = OpenAI(
-            api_key=settings.GROQ_API_KEY,
-            base_url="https://api.groq.com/openai/v1",
-        )
-        response = client.chat.completions.create(
-            model="llama-3.3-70b-versatile",
-            messages=[
-                {
-                    "role": "user",
-                    "content": (
-                        f"Você é um especialista em educação. Com base no conteúdo abaixo, gere {quantidade} "
-                        "perguntas de múltipla escolha com 4 alternativas cada. Exatamente 1 alternativa deve ser correta. "
-                        "Retorne APENAS um JSON válido no formato:\n"
-                        '{"questions": [{"statement": "...", "points": 1, "order_num": 1, '
-                        '"alternatives": [{"text": "...", "correct": true/false}]}]}\n\n'
-                        f"Conteúdo:\n{conteudo}"
-                    ),
-                }
-            ],
-        )
-        raw = response.choices[0].message.content
-        result = self._parse_quiz(raw)
-        self._pending[module_id] = result
-        return result
-
-    def buscar_pendente(self, module_id: int) -> QuizGeneratedResponse:
-        pendente = self._pending.get(module_id)
-        if not pendente:
+    async def buscar_pendente(self, module_id: int) -> QuizGeneratedResponse:
+        redis = await get_async_redis()
+        raw = await redis.get(f"pending:quiz:{module_id}")
+        if not raw:
             raise RegraDeNegocioException("Nenhum quiz pendente para este módulo")
-        return pendente
+        return self._parse_quiz(raw)
 
-    def confirmar_quiz(self, module_id: int) -> Quiz:
-        pendente = self.buscar_pendente(module_id)
+    async def confirmar_quiz(self, module_id: int) -> Quiz:
+        pendente = await self.buscar_pendente(module_id)
         request = QuizRequest(
             questions=[
                 QuestionRequest(
@@ -66,16 +41,14 @@ class QuizAiService:
                 for q in pendente.questions
             ]
         )
-        quiz = self.quiz_service.criar(module_id, request)
-        del self._pending[module_id]
+        quiz = await self.quiz_service.criar(module_id, request)
+        redis = await get_async_redis()
+        await redis.delete(f"pending:quiz:{module_id}")
         return quiz
 
-    def _coletar_conteudo_modulo(self, module_id: int) -> str:
-        lessons = self._lesson_repo.find_by_module(module_id)
-        partes = []
-        for lesson in lessons:
-            if lesson.content_editor:
-                partes.append(lesson.content_editor)
+    async def _coletar_conteudo_modulo(self, module_id: int) -> str:
+        lessons = await self._lesson_repo.find_by_module(module_id)
+        partes = [lesson.content_editor for lesson in lessons if lesson.content_editor]
         return "\n\n".join(partes)
 
     def _parse_quiz(self, raw: str) -> QuizGeneratedResponse:

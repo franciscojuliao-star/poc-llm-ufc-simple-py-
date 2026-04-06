@@ -1,60 +1,39 @@
 import pdfplumber
-from openai import OpenAI
-from sqlalchemy.orm import Session
+from sqlalchemy.ext.asyncio import AsyncSession
 from app.lesson.model import Lesson
 from app.lesson.schema import LessonResponse
 from app.lesson.service import LessonService
 from app.shared.exception import RegraDeNegocioException
-from app.core.config import settings
-
-_pending_content: dict[int, str] = {}
+from app.shared.redis_client import get_async_redis
+from app.worker.lesson_tasks import gerar_conteudo_task
 
 
 class LessonAiService:
-    def __init__(self, db: Session):
+    def __init__(self, db: AsyncSession):
         self.lesson_service = LessonService(db)
-        self._pending = _pending_content
 
-    def gerar_conteudo(self, lesson_id: int) -> str:
-        lesson = self.lesson_service.buscar_entidade(lesson_id)
+    async def gerar_conteudo(self, lesson_id: int) -> dict:
+        lesson = await self.lesson_service.buscar_entidade(lesson_id)
         fonte = self._extrair_fonte(lesson)
         if not fonte or not fonte.strip():
             raise RegraDeNegocioException("A aula não possui conteúdo legível para gerar via IA")
+        task = gerar_conteudo_task.delay(lesson_id, fonte)
+        return {"task_id": task.id, "status": "PROCESSING"}
 
-        client = OpenAI(
-            api_key=settings.GROQ_API_KEY,
-            base_url="https://api.groq.com/openai/v1",
-        )
-        response = client.chat.completions.create(
-            model="llama-3.3-70b-versatile",
-            messages=[
-                {
-                    "role": "user",
-                    "content": (
-                        "Você é um especialista em educação online. A partir do conteúdo abaixo, "
-                        "gere um conteúdo de aula formatado em HTML semântico, bem estruturado, "
-                        "com títulos (h2, h3), parágrafos, listas e destaques onde apropriado. "
-                        "Retorne apenas o HTML sem delimitadores de código.\n\nConteúdo:\n" + fonte
-                    ),
-                }
-            ],
-        )
-        conteudo = response.choices[0].message.content
-        self._pending[lesson_id] = conteudo
-        return conteudo
-
-    def buscar_conteudo_pendente(self, lesson_id: int) -> str:
-        pendente = self._pending.get(lesson_id)
-        if not pendente:
+    async def buscar_conteudo_pendente(self, lesson_id: int) -> str:
+        redis = await get_async_redis()
+        content = await redis.get(f"pending:lesson:{lesson_id}")
+        if not content:
             raise RegraDeNegocioException("Nenhum conteúdo pendente para esta aula")
-        return pendente
+        return content
 
-    def confirmar_conteudo(self, lesson_id: int) -> LessonResponse:
-        pendente = self.buscar_conteudo_pendente(lesson_id)
-        lesson = self.lesson_service.buscar_entidade(lesson_id)
-        lesson.content_editor = pendente
-        self.lesson_service.salvar_conteudo_gerado(lesson)
-        del self._pending[lesson_id]
+    async def confirmar_conteudo(self, lesson_id: int) -> LessonResponse:
+        conteudo = await self.buscar_conteudo_pendente(lesson_id)
+        lesson = await self.lesson_service.buscar_entidade(lesson_id)
+        lesson.content_editor = conteudo
+        await self.lesson_service.salvar_conteudo_gerado(lesson)
+        redis = await get_async_redis()
+        await redis.delete(f"pending:lesson:{lesson_id}")
         return LessonResponse.model_validate(lesson)
 
     def _extrair_fonte(self, lesson: Lesson) -> str | None:

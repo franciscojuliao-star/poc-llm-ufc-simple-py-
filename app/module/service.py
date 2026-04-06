@@ -1,24 +1,24 @@
 import os
 import uuid
-from sqlalchemy.orm import Session
+from sqlalchemy.ext.asyncio import AsyncSession
 from fastapi import UploadFile
 from app.module.model import Module
 from app.module.repository import ModuleRepository
-from app.module.schema import ModuleRequest
+from app.module.schema import ModuleRequest, ModuleUpdateRequest
 from app.course.repository import CourseRepository
 from app.shared.exception import RecursoNaoEncontradoException, RegraDeNegocioException
 from app.core.config import settings
 
 
 class ModuleService:
-    def __init__(self, db: Session):
+    def __init__(self, db: AsyncSession):
         self.repository = ModuleRepository(db)
         self.course_repository = CourseRepository(db)
 
-    def criar(self, course_id: int, request: ModuleRequest, imagem: UploadFile | None) -> Module:
-        if not self.course_repository.find_by_id(course_id):
+    async def criar(self, course_id: int, request: ModuleRequest, imagem: UploadFile | None) -> Module:
+        if not await self.course_repository.find_by_id(course_id):
             raise RecursoNaoEncontradoException(f"Curso {course_id} não encontrado")
-        order_num = self.repository.count_by_course(course_id) + 1
+        order_num = await self.repository.count_by_course(course_id) + 1
         image_path = self._salvar_imagem(imagem) if imagem else None
         module = Module(
             name=request.name,
@@ -26,13 +26,23 @@ class ModuleService:
             course_id=course_id,
             image_path=image_path,
         )
-        return self.repository.save(module)
+        return await self.repository.save(module)
 
-    def listar_por_curso(self, course_id: int) -> list[Module]:
-        return self.repository.find_by_course(course_id)
+    async def atualizar(self, module_id: int, request: ModuleUpdateRequest) -> Module:
+        module = await self.buscar_por_id(module_id)
+        if request.name is not None:
+            module.name = request.name
+        return await self.repository.save(module)
 
-    def buscar_por_id(self, module_id: int) -> Module:
-        module = self.repository.find_by_id(module_id)
+    async def deletar(self, module_id: int) -> None:
+        module = await self.buscar_por_id(module_id)
+        await self.repository.delete(module)
+
+    async def listar_por_curso(self, course_id: int) -> list[Module]:
+        return await self.repository.find_by_course(course_id)
+
+    async def buscar_por_id(self, module_id: int) -> Module:
+        module = await self.repository.find_by_id(module_id)
         if not module:
             raise RecursoNaoEncontradoException(f"Módulo {module_id} não encontrado")
         return module
