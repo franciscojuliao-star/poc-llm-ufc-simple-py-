@@ -20,3 +20,7 @@ class CourseRepository:
     async def find_by_id(self, course_id: int) -> Course | None:
         result = await self.db.execute(select(Course).where(Course.id == course_id))
         return result.scalar_one_or_none()
+
+    async def delete(self, course: Course) -> None:
+        await self.db.delete(course)
+        await self.db.commit()
