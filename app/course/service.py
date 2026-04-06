@@ -4,7 +4,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from fastapi import UploadFile
 from app.course.model import Course
 from app.course.repository import CourseRepository
-from app.course.schema import CourseRequest
+from app.course.schema import CourseRequest, CourseUpdateRequest
 from app.shared.exception import RecursoNaoEncontradoException, RegraDeNegocioException
 from app.core.config import settings
 
@@ -25,6 +25,20 @@ class CourseService:
 
     async def listar(self) -> list[Course]:
         return await self.repository.find_all()
+
+    async def atualizar(self, course_id: int, request: CourseUpdateRequest) -> Course:
+        course = await self.buscar_por_id(course_id)
+        if request.title is not None:
+            course.title = request.title
+        if request.category is not None:
+            course.category = request.category
+        if request.description is not None:
+            course.description = request.description
+        return await self.repository.save(course)
+
+    async def deletar(self, course_id: int) -> None:
+        course = await self.buscar_por_id(course_id)
+        await self.repository.delete(course)
 
     async def buscar_por_id(self, course_id: int) -> Course:
         course = await self.repository.find_by_id(course_id)

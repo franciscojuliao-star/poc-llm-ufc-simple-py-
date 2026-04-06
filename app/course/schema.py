@@ -8,6 +8,12 @@ class CourseRequest(BaseModel):
     description: str
 
 
+class CourseUpdateRequest(BaseModel):
+    title: str | None = None
+    category: str | None = None
+    description: str | None = None
+
+
 class CourseResponse(BaseModel):
     id: int
     title: str

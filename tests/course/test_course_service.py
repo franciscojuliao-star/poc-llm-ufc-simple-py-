@@ -82,3 +82,38 @@ class TestCourseService:
 
         with pytest.raises(RecursoNaoEncontradoException):
             await service.buscar_por_id(99)
+
+    async def test_atualizar_curso_altera_campos(self, service):
+        from app.course.schema import CourseUpdateRequest
+        course = Course(id=1, title="Python", category="Prog", description="Desc")
+        service.repository.find_by_id = AsyncMock(return_value=course)
+        service.repository.save = AsyncMock(side_effect=lambda c: c)
+
+        request = CourseUpdateRequest(title="Python Avançado", description="Nova desc")
+        result = await service.atualizar(1, request)
+
+        assert result.title == "Python Avançado"
+        assert result.description == "Nova desc"
+        assert result.category == "Prog"
+
+    async def test_atualizar_curso_lanca_excecao_quando_nao_encontrado(self, service):
+        from app.course.schema import CourseUpdateRequest
+        service.repository.find_by_id = AsyncMock(return_value=None)
+
+        with pytest.raises(RecursoNaoEncontradoException):
+            await service.atualizar(99, CourseUpdateRequest())
+
+    async def test_deletar_curso_chama_delete(self, service):
+        course = Course(id=1, title="Python", category="Prog", description="Desc")
+        service.repository.find_by_id = AsyncMock(return_value=course)
+        service.repository.delete = AsyncMock()
+
+        await service.deletar(1)
+
+        service.repository.delete.assert_called_once_with(course)
+
+    async def test_deletar_curso_lanca_excecao_quando_nao_encontrado(self, service):
+        service.repository.find_by_id = AsyncMock(return_value=None)
+
+        with pytest.raises(RecursoNaoEncontradoException):
+            await service.deletar(99)
