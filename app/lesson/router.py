@@ -1,5 +1,5 @@
 from fastapi import APIRouter, Depends, UploadFile, File, Form
-from app.lesson.schema import LessonRequest, LessonResponse
+from app.lesson.schema import LessonRequest, LessonUpdateRequest, LessonResponse
 from app.lesson.service import LessonService
 from app.lesson.ai_service import LessonAiService
 from app.shared.dependencies import SessionDep
@@ -39,6 +39,18 @@ async def listar(module_id: int, service: LessonService = Depends(get_service)):
 async def buscar(lesson_id: int, service: LessonService = Depends(get_service)):
     lesson = await service.buscar_por_id(lesson_id)
     return ApiResponse.ok(dados=LessonResponse.model_validate(lesson))
+
+
+@router.put("/lessons/{lesson_id}", response_model=ApiResponse)
+async def atualizar(lesson_id: int, request: LessonUpdateRequest, service: LessonService = Depends(get_service)):
+    lesson = await service.atualizar(lesson_id, request)
+    return ApiResponse.ok("Aula atualizada com sucesso", LessonResponse.model_validate(lesson))
+
+
+@router.delete("/lessons/{lesson_id}", response_model=ApiResponse)
+async def deletar(lesson_id: int, service: LessonService = Depends(get_service)):
+    await service.deletar(lesson_id)
+    return ApiResponse.ok("Aula deletada com sucesso")
 
 
 @router.post("/lessons/{lesson_id}/gerar-conteudo", response_model=ApiResponse)

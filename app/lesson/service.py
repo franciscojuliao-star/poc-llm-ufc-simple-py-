@@ -4,7 +4,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from fastapi import UploadFile
 from app.lesson.model import Lesson
 from app.lesson.repository import LessonRepository
-from app.lesson.schema import LessonRequest
+from app.lesson.schema import LessonRequest, LessonUpdateRequest
 from app.module.repository import ModuleRepository
 from app.shared.exception import RecursoNaoEncontradoException, RegraDeNegocioException
 from app.core.config import settings
@@ -34,6 +34,18 @@ class LessonService:
             file_type=file_type,
         )
         return await self.repository.save(lesson)
+
+    async def atualizar(self, lesson_id: int, request: LessonUpdateRequest) -> Lesson:
+        lesson = await self.buscar_entidade(lesson_id)
+        if request.name is not None:
+            lesson.name = request.name
+        if request.content_editor is not None:
+            lesson.content_editor = request.content_editor
+        return await self.repository.save(lesson)
+
+    async def deletar(self, lesson_id: int) -> None:
+        lesson = await self.buscar_entidade(lesson_id)
+        await self.repository.delete(lesson)
 
     async def listar_por_modulo(self, module_id: int) -> list[Lesson]:
         return await self.repository.find_by_module(module_id)
