@@ -4,7 +4,7 @@
     "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
   },
   "variable": [
-    { "key": "base_url", "value": "http://localhost:8001" },
+    { "key": "base_url", "value": "http://localhost:8000" },
     { "key": "course_id", "value": "1" },
     { "key": "module_id", "value": "1" },
     { "key": "lesson_id", "value": "1" },
@@ -67,6 +67,25 @@
             "method": "GET",
             "url": { "raw": "{{base_url}}/courses/{{course_id}}", "host": ["{{base_url}}"], "path": ["courses", "{{course_id}}"] }
           }
+        },
+        {
+          "name": "Atualizar curso",
+          "request": {
+            "method": "PUT",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "url": { "raw": "{{base_url}}/courses/{{course_id}}", "host": ["{{base_url}}"], "path": ["courses", "{{course_id}}"] },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"title\": \"Novo título do curso\",\n  \"category\": \"Nova categoria\",\n  \"description\": \"Nova descrição\"\n}"
+            }
+          }
+        },
+        {
+          "name": "Deletar curso",
+          "request": {
+            "method": "DELETE",
+            "url": { "raw": "{{base_url}}/courses/{{course_id}}", "host": ["{{base_url}}"], "path": ["courses", "{{course_id}}"] }
+          }
         }
       ]
     },
@@ -125,6 +144,25 @@
             "method": "GET",
             "url": { "raw": "{{base_url}}/modules/{{module_id}}", "host": ["{{base_url}}"], "path": ["modules", "{{module_id}}"] }
           }
+        },
+        {
+          "name": "Atualizar módulo",
+          "request": {
+            "method": "PUT",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "url": { "raw": "{{base_url}}/modules/{{module_id}}", "host": ["{{base_url}}"], "path": ["modules", "{{module_id}}"] },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Novo nome do módulo\"\n}"
+            }
+          }
+        },
+        {
+          "name": "Deletar módulo",
+          "request": {
+            "method": "DELETE",
+            "url": { "raw": "{{base_url}}/modules/{{module_id}}", "host": ["{{base_url}}"], "path": ["modules", "{{module_id}}"] }
+          }
         }
       ]
     },
@@ -181,6 +219,25 @@
           "name": "Detalhar aula",
           "request": {
             "method": "GET",
+            "url": { "raw": "{{base_url}}/lessons/{{lesson_id}}", "host": ["{{base_url}}"], "path": ["lessons", "{{lesson_id}}"] }
+          }
+        },
+        {
+          "name": "Atualizar aula",
+          "request": {
+            "method": "PUT",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "url": { "raw": "{{base_url}}/lessons/{{lesson_id}}", "host": ["{{base_url}}"], "path": ["lessons", "{{lesson_id}}"] },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Novo nome da aula\",\n  \"content_editor\": \"Novo conteúdo da aula\"\n}"
+            }
+          }
+        },
+        {
+          "name": "Deletar aula",
+          "request": {
+            "method": "DELETE",
             "url": { "raw": "{{base_url}}/lessons/{{lesson_id}}", "host": ["{{base_url}}"], "path": ["lessons", "{{lesson_id}}"] }
           }
         }
