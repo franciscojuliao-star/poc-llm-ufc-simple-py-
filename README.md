@@ -313,7 +313,7 @@ GROQ_API_KEY=placeholder pytest
 | IA | Spring AI | OpenAI SDK |
 | Leitura PDF | Apache PDFBox | pdfplumber |
 | Validação | Bean Validation | Pydantic v2 |
-| Processamento Assíncrono | Spring @Async / Virtual Threads | Celery + Redis |
+| Processamento Assíncrono | Síncrono (ConcurrentHashMap em memória) | Celery + Redis |
 | Testes | JUnit 5 + Mockito | pytest + unittest.mock |
 | Porta padrão | 8080 | 8000 |
 | Docs | SpringDoc Swagger | FastAPI Swagger (nativo) |
