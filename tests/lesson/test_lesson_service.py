@@ -99,3 +99,36 @@ class TestLessonService:
 
         with pytest.raises(RecursoNaoEncontradoException):
             await service.buscar_por_id(99)
+
+    async def test_atualizar_aula_altera_campos(self, service):
+        from app.lesson.schema import LessonUpdateRequest
+        lesson = Lesson(id=1, name="Aula 1", order_num=1, module_id=1, content_editor="Conteúdo")
+        service.repository.find_by_id = AsyncMock(return_value=lesson)
+        service.repository.save = AsyncMock(side_effect=lambda l: l)
+
+        result = await service.atualizar(1, LessonUpdateRequest(name="Aula Atualizada"))
+
+        assert result.name == "Aula Atualizada"
+        assert result.content_editor == "Conteúdo"
+
+    async def test_atualizar_aula_lanca_excecao_quando_nao_encontrado(self, service):
+        from app.lesson.schema import LessonUpdateRequest
+        service.repository.find_by_id = AsyncMock(return_value=None)
+
+        with pytest.raises(RecursoNaoEncontradoException):
+            await service.atualizar(99, LessonUpdateRequest())
+
+    async def test_deletar_aula_chama_delete(self, service):
+        lesson = Lesson(id=1, name="Aula 1", order_num=1, module_id=1)
+        service.repository.find_by_id = AsyncMock(return_value=lesson)
+        service.repository.delete = AsyncMock()
+
+        await service.deletar(1)
+
+        service.repository.delete.assert_called_once_with(lesson)
+
+    async def test_deletar_aula_lanca_excecao_quando_nao_encontrado(self, service):
+        service.repository.find_by_id = AsyncMock(return_value=None)
+
+        with pytest.raises(RecursoNaoEncontradoException):
+            await service.deletar(99)

@@ -26,3 +26,7 @@ class LessonRepository:
             select(func.count()).select_from(Lesson).where(Lesson.module_id == module_id)
         )
         return result.scalar() or 0
+
+    async def delete(self, lesson: Lesson) -> None:
+        await self.db.delete(lesson)
+        await self.db.commit()
