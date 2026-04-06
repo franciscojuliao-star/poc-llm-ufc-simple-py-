@@ -71,3 +71,35 @@ class TestModuleService:
 
         with pytest.raises(RecursoNaoEncontradoException):
             await service.buscar_por_id(99)
+
+    async def test_atualizar_modulo_altera_nome(self, service):
+        from app.module.schema import ModuleUpdateRequest
+        module = Module(id=1, name="Módulo 1", order_num=1, course_id=1)
+        service.repository.find_by_id = AsyncMock(return_value=module)
+        service.repository.save = AsyncMock(side_effect=lambda m: m)
+
+        result = await service.atualizar(1, ModuleUpdateRequest(name="Módulo Atualizado"))
+
+        assert result.name == "Módulo Atualizado"
+
+    async def test_atualizar_modulo_lanca_excecao_quando_nao_encontrado(self, service):
+        from app.module.schema import ModuleUpdateRequest
+        service.repository.find_by_id = AsyncMock(return_value=None)
+
+        with pytest.raises(RecursoNaoEncontradoException):
+            await service.atualizar(99, ModuleUpdateRequest())
+
+    async def test_deletar_modulo_chama_delete(self, service):
+        module = Module(id=1, name="Módulo 1", order_num=1, course_id=1)
+        service.repository.find_by_id = AsyncMock(return_value=module)
+        service.repository.delete = AsyncMock()
+
+        await service.deletar(1)
+
+        service.repository.delete.assert_called_once_with(module)
+
+    async def test_deletar_modulo_lanca_excecao_quando_nao_encontrado(self, service):
+        service.repository.find_by_id = AsyncMock(return_value=None)
+
+        with pytest.raises(RecursoNaoEncontradoException):
+            await service.deletar(99)

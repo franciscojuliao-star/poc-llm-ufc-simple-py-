@@ -1,5 +1,5 @@
 from fastapi import APIRouter, Depends, UploadFile, File, Form
-from app.module.schema import ModuleRequest, ModuleResponse
+from app.module.schema import ModuleRequest, ModuleUpdateRequest, ModuleResponse
 from app.module.service import ModuleService
 from app.shared.dependencies import SessionDep
 from app.shared.schema import ApiResponse
@@ -34,3 +34,15 @@ async def listar(course_id: int, service: ModuleService = Depends(get_service)):
 async def buscar(module_id: int, service: ModuleService = Depends(get_service)):
     module = await service.buscar_por_id(module_id)
     return ApiResponse.ok(dados=ModuleResponse.model_validate(module))
+
+
+@router.put("/modules/{module_id}", response_model=ApiResponse)
+async def atualizar(module_id: int, request: ModuleUpdateRequest, service: ModuleService = Depends(get_service)):
+    module = await service.atualizar(module_id, request)
+    return ApiResponse.ok("Módulo atualizado com sucesso", ModuleResponse.model_validate(module))
+
+
+@router.delete("/modules/{module_id}", response_model=ApiResponse)
+async def deletar(module_id: int, service: ModuleService = Depends(get_service)):
+    await service.deletar(module_id)
+    return ApiResponse.ok("Módulo deletado com sucesso")
