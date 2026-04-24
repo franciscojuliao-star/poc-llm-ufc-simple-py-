@@ -84,6 +84,10 @@ source .venv/bin/activate
 pip install -e ".[dev]"
 ```
 
+> **O que é `pip install -e ".[dev]"`?**
+> Instala o projeto em modo editable (`-e`): o código fonte é referenciado diretamente, sem copiar arquivos — qualquer alteração reflete imediatamente sem precisar reinstalar.
+> O `.` indica o projeto atual (lê o `pyproject.toml`) e `[dev]` inclui as dependências extras de desenvolvimento (pytest, httpx, etc.).
+
 ### 3. Configurar variáveis de ambiente
 
 Crie um arquivo `.env` na raiz (não versionado):
