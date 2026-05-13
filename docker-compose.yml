@@ -1,0 +1,91 @@
+services:
+  postgres:
+    image: postgres:16
+    container_name: poc_llm_postgres
+    environment:
+      POSTGRES_USER: poc_user
+      POSTGRES_PASSWORD: poc123
+      POSTGRES_DB: poc_llm_simple_py
+    ports:
+      - "5433:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U poc_user -d poc_llm_simple_py"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+    restart: unless-stopped
+    networks:
+      - poc-py-network
+
+  redis:
+    image: redis:7-alpine
+    container_name: poc_llm_redis
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+    restart: unless-stopped
+    networks:
+      - poc-py-network
+
+  api:
+    build: .
+    container_name: poc_llm_api
+    env_file:
+      - .env
+    environment:
+      DB_URL: postgresql://poc_user:poc123@postgres:5432/poc_llm_simple_py
+      ASYNC_DB_URL: postgresql+asyncpg://poc_user:poc123@postgres:5432/poc_llm_simple_py
+      REDIS_URL: redis://redis:6379/0
+      UPLOAD_DIR: /code/uploads
+    ports:
+      - "8000:8000"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    command: sh -c "alembic upgrade head && uvicorn app.main:app --host 0.0.0.0 --port 8000"
+    volumes:
+      - uploads_data:/code/uploads
+    restart: unless-stopped
+    networks:
+      - poc-py-network
+
+  worker:
+    build: .
+    container_name: poc_llm_worker
+    env_file:
+      - .env
+    environment:
+      DB_URL: postgresql://poc_user:poc123@postgres:5432/poc_llm_simple_py
+      ASYNC_DB_URL: postgresql+asyncpg://poc_user:poc123@postgres:5432/poc_llm_simple_py
+      REDIS_URL: redis://redis:6379/0
+      UPLOAD_DIR: /code/uploads
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    command: celery -A app.worker.celery_app worker --loglevel=info
+    volumes:
+      - uploads_data:/code/uploads
+    restart: unless-stopped
+    networks:
+      - poc-py-network
+
+volumes:
+  postgres_data:
+  redis_data:
+  uploads_data:
+
+networks:
+  poc-py-network:
+    driver: bridge
