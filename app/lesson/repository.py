@@ -10,7 +10,6 @@ class LessonRepository:
     async def save(self, lesson: Lesson) -> Lesson:
         self.db.add(lesson)
         await self.db.commit()
-        await self.db.refresh(lesson)
         return lesson
 
     async def find_by_module(self, module_id: int) -> list[Lesson]:

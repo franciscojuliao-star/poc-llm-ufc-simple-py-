@@ -10,11 +10,13 @@ class CourseRepository:
     async def save(self, course: Course) -> Course:
         self.db.add(course)
         await self.db.commit()
-        await self.db.refresh(course)
         return course
 
-    async def find_all(self) -> list[Course]:
-        result = await self.db.execute(select(Course))
+    async def find_all(self, page: int = 1, per_page: int = 20) -> list[Course]:
+        offset = (page - 1) * per_page
+        result = await self.db.execute(
+            select(Course).order_by(Course.created_at).offset(offset).limit(per_page)
+        )
         return list(result.scalars().all())
 
     async def find_by_id(self, course_id: int) -> Course | None:

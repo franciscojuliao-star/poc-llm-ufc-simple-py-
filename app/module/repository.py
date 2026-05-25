@@ -10,7 +10,6 @@ class ModuleRepository:
     async def save(self, module: Module) -> Module:
         self.db.add(module)
         await self.db.commit()
-        await self.db.refresh(module)
         return module
 
     async def find_by_course(self, course_id: int) -> list[Module]:
