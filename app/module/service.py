@@ -1,5 +1,6 @@
 import os
 import uuid
+import aiofiles
 from sqlalchemy.ext.asyncio import AsyncSession
 from fastapi import UploadFile
 from app.module.model import Module
@@ -19,7 +20,7 @@ class ModuleService:
         if not await self.course_repository.find_by_id(course_id):
             raise RecursoNaoEncontradoException(f"Curso {course_id} não encontrado")
         order_num = await self.repository.count_by_course(course_id) + 1
-        image_path = self._salvar_imagem(imagem) if imagem else None
+        image_path = await self._salvar_imagem(imagem) if imagem else None
         module = Module(
             name=request.name,
             order_num=order_num,
@@ -47,15 +48,13 @@ class ModuleService:
             raise RecursoNaoEncontradoException(f"Módulo {module_id} não encontrado")
         return module
 
-    def _salvar_imagem(self, imagem: UploadFile) -> str:
-        conteudo = imagem.file.read()
+    async def _salvar_imagem(self, imagem: UploadFile) -> str:
+        conteudo = await imagem.read()
         if not imagem.content_type or not imagem.content_type.startswith("image/"):
             raise RegraDeNegocioException("Arquivo enviado não é uma imagem válida")
         ext = os.path.splitext(imagem.filename)[-1] or ".jpg"
         filename = f"{uuid.uuid4()}{ext}"
-        upload_dir = os.path.join(settings.UPLOAD_DIR, "modules")
-        os.makedirs(upload_dir, exist_ok=True)
-        filepath = os.path.join(upload_dir, filename)
-        with open(filepath, "wb") as f:
-            f.write(conteudo)
+        filepath = os.path.join(settings.UPLOAD_DIR, "modules", filename)
+        async with aiofiles.open(filepath, "wb") as f:
+            await f.write(conteudo)
         return filepath

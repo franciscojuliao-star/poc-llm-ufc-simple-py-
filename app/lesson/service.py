@@ -1,5 +1,6 @@
 import os
 import uuid
+import aiofiles
 from sqlalchemy.ext.asyncio import AsyncSession
 from fastapi import UploadFile
 from app.lesson.model import Lesson
@@ -23,7 +24,7 @@ class LessonService:
         order_num = await self.repository.count_by_module(module_id) + 1
         file_path, file_type = None, None
         if arquivo:
-            file_path = self._salvar_arquivo(arquivo)
+            file_path = await self._salvar_arquivo(arquivo)
             file_type = "PDF"
         lesson = Lesson(
             name=request.name,
@@ -62,13 +63,11 @@ class LessonService:
     async def salvar_conteudo_gerado(self, lesson: Lesson) -> Lesson:
         return await self.repository.save(lesson)
 
-    def _salvar_arquivo(self, arquivo: UploadFile) -> str:
-        conteudo = arquivo.file.read()
+    async def _salvar_arquivo(self, arquivo: UploadFile) -> str:
+        conteudo = await arquivo.read()
         ext = os.path.splitext(arquivo.filename)[-1] or ".pdf"
         filename = f"{uuid.uuid4()}{ext}"
-        upload_dir = os.path.join(settings.UPLOAD_DIR, "lessons")
-        os.makedirs(upload_dir, exist_ok=True)
-        filepath = os.path.join(upload_dir, filename)
-        with open(filepath, "wb") as f:
-            f.write(conteudo)
+        filepath = os.path.join(settings.UPLOAD_DIR, "lessons", filename)
+        async with aiofiles.open(filepath, "wb") as f:
+            await f.write(conteudo)
         return filepath

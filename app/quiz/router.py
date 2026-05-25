@@ -1,4 +1,5 @@
 from fastapi import APIRouter, Depends, Query
+from fastapi.responses import Response
 from app.quiz.schema import (
     QuizRequest, QuizResponse, QuizConfigRequest,
     QuestionRequest, QuestionResponse,
@@ -9,8 +10,13 @@ from app.quiz.service import QuizService
 from app.quiz.ai_service import QuizAiService
 from app.shared.dependencies import SessionDep
 from app.shared.schema import ApiResponse
+from app.shared.cache import cache_get, cache_set, cache_delete, serialize
 
 router = APIRouter(tags=["Quiz"])
+
+
+def _key_quiz(module_id: int) -> str:
+    return f"quiz:module:{module_id}"
 
 
 def get_service(db: SessionDep) -> QuizService:
@@ -24,13 +30,20 @@ def get_ai_service(db: SessionDep) -> QuizAiService:
 @router.post("/modules/{module_id}/quiz", response_model=ApiResponse, status_code=201)
 async def criar(module_id: int, request: QuizRequest, service: QuizService = Depends(get_service)):
     quiz = await service.criar(module_id, request)
+    await cache_delete(_key_quiz(module_id))
     return ApiResponse.ok("Quiz criado com sucesso", QuizResponse.model_validate(quiz))
 
 
 @router.get("/modules/{module_id}/quiz", response_model=ApiResponse)
 async def buscar(module_id: int, service: QuizService = Depends(get_service)):
+    key = _key_quiz(module_id)
+    cached = await cache_get(key)
+    if cached is not None:
+        return Response(content=cached, media_type="application/json")
     quiz = await service.buscar_por_modulo(module_id)
-    return ApiResponse.ok(dados=QuizResponse.model_validate(quiz))
+    body = serialize(ApiResponse.ok(dados=QuizResponse.model_validate(quiz)).model_dump(mode="json"))
+    await cache_set(key, body)
+    return Response(content=body, media_type="application/json")
 
 
 @router.post("/quiz/{quiz_id}", response_model=ApiResponse)
@@ -82,6 +95,7 @@ async def buscar_pendente(module_id: int, ai_service: QuizAiService = Depends(ge
 @router.post("/modules/{module_id}/quiz/confirmar", response_model=ApiResponse)
 async def confirmar_quiz(module_id: int, ai_service: QuizAiService = Depends(get_ai_service)):
     quiz = await ai_service.confirmar_quiz(module_id)
+    await cache_delete(_key_quiz(module_id))
     return ApiResponse.ok("Quiz confirmado e salvo com sucesso", QuizResponse.model_validate(quiz))
 
 

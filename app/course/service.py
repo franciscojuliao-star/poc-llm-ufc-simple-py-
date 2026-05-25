@@ -1,5 +1,6 @@
 import os
 import uuid
+import aiofiles
 from sqlalchemy.ext.asyncio import AsyncSession
 from fastapi import UploadFile
 from app.course.model import Course
@@ -14,7 +15,7 @@ class CourseService:
         self.repository = CourseRepository(db)
 
     async def criar(self, request: CourseRequest, imagem: UploadFile | None) -> Course:
-        image_path = self._salvar_imagem(imagem) if imagem else None
+        image_path = await self._salvar_imagem(imagem) if imagem else None
         course = Course(
             title=request.title,
             category=request.category,
@@ -23,8 +24,8 @@ class CourseService:
         )
         return await self.repository.save(course)
 
-    async def listar(self) -> list[Course]:
-        return await self.repository.find_all()
+    async def listar(self, page: int = 1, per_page: int = 20) -> list[Course]:
+        return await self.repository.find_all(page, per_page)
 
     async def atualizar(self, course_id: int, request: CourseUpdateRequest) -> Course:
         course = await self.buscar_por_id(course_id)
@@ -46,16 +47,14 @@ class CourseService:
             raise RecursoNaoEncontradoException(f"Curso {course_id} não encontrado")
         return course
 
-    def _salvar_imagem(self, imagem: UploadFile) -> str:
-        conteudo = imagem.file.read()
+    async def _salvar_imagem(self, imagem: UploadFile) -> str:
+        conteudo = await imagem.read()
         if not conteudo[:4].startswith((b"\xff\xd8", b"\x89PNG", b"GIF8", b"RIFF", b"WEBP")):
             if not imagem.content_type or not imagem.content_type.startswith("image/"):
                 raise RegraDeNegocioException("Arquivo enviado não é uma imagem válida")
         ext = os.path.splitext(imagem.filename)[-1] or ".jpg"
         filename = f"{uuid.uuid4()}{ext}"
-        upload_dir = os.path.join(settings.UPLOAD_DIR, "courses")
-        os.makedirs(upload_dir, exist_ok=True)
-        filepath = os.path.join(upload_dir, filename)
-        with open(filepath, "wb") as f:
-            f.write(conteudo)
+        filepath = os.path.join(settings.UPLOAD_DIR, "courses", filename)
+        async with aiofiles.open(filepath, "wb") as f:
+            await f.write(conteudo)
         return filepath
